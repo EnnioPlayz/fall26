@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FALL26 · instrument</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070809;--p0:#0B0D10;--p1:#0F1216;--p2:#14181D;--band:#161A20;
+  --ln:#1B2027;--ln2:#242A33;--ln3:#323A45;
+  --t1:#E6E3DA;--t2:#98A0AA;--t3:#646C77;--t4:#3D454F;
+  --ch1:#E0A340;--ch2:#46B8D4;--ch3:#CE6FA0;--ch4:#67C08A;
+  --sys:#E0A340;--hot:#E2615F;--warn:#D9A648;--ok:#5FB283;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:13px;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.m{font-family:var(--mono);font-variant-numeric:tabular-nums}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:var(--p0)}
+::-webkit-scrollbar-thumb{background:var(--ln2);border-radius:1px}
+::-webkit-scrollbar-thumb:hover{background:var(--ln3)}
+
+/* ===== system bar ===== */
+.sys{display:flex;align-items:stretch;background:var(--p0);border-bottom:1px solid var(--ln2)}
+.sys .id{padding:0 16px;display:flex;align-items:center;gap:9px;border-right:1px solid var(--ln)}
+.sys .id b{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.08em;color:var(--sys)}
+.sys .id i{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.mode{padding:11px 16px;border:none;border-right:1px solid var(--ln);background:none;color:var(--t3);
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;cursor:pointer;display:flex;align-items:center;gap:7px}
+.mode kbd{font-family:var(--mono);font-size:11px;color:var(--t4);border:1px solid var(--ln2);border-radius:2px;padding:0 4px;line-height:15px}
+.mode:hover{color:var(--t2);background:var(--p1)}
+.mode.on{color:var(--t1);background:var(--p2);box-shadow:inset 0 -2px 0 var(--sys)}
+.sys .rt{margin-left:auto;display:flex;align-items:center;gap:18px;padding:0 16px;border-left:1px solid var(--ln)}
+.sys .rt .k{font-size:11px;color:var(--t3)}
+.sys .rt .v{font-family:var(--mono);font-size:12px;color:var(--t2)}
+
+/* ===== command line ===== */
+.cmd{display:flex;align-items:center;gap:10px;padding:7px 16px;background:var(--p1);border-bottom:1px solid var(--ln2)}
+.cmd .pr{font-family:var(--mono);font-size:12px;color:var(--sys)}
+.cmd input{flex:1;background:none;border:none;outline:none;color:var(--t1);font-family:var(--mono);font-size:12px}
+.cmd input::placeholder{color:var(--t4)}
+.cmd .hint{font-family:var(--mono);font-size:11px;color:var(--t4)}
+
+/* ===== panels ===== */
+.ph{display:flex;align-items:center;justify-content:space-between;padding:8px 13px;background:var(--band);
+    border-bottom:1px solid var(--ln2);border-top:1px solid var(--ln2);user-select:none}
+.ph h2{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.16em;color:#A9B1BB}
+.ph .meta{font-family:var(--mono);font-size:11px;color:var(--t3)}
+.col{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.view{display:none}.view.on{display:block}
+.stats{display:flex;gap:16px;padding:7px 13px;border-top:1px solid var(--ln);flex-wrap:wrap}
+.stats span{font-family:var(--mono);font-size:11px;color:var(--t3)}
+.stats span b{color:var(--t2);font-weight:400}
+
+/* ===== resizable split ===== */
+.split{display:flex;align-items:stretch;width:100%}
+.gut{width:5px;flex:0 0 5px;background:var(--ln2);cursor:col-resize;position:relative}
+.gut:hover,.gut.drag{background:var(--ln3)}
+.gut::after{content:'';position:absolute;top:50%;left:1px;width:3px;height:26px;transform:translateY(-50%);
+  background:repeating-linear-gradient(180deg,var(--t4) 0 2px,transparent 2px 4px);border-radius:1px}
+
+/* ===== contained scale ===== */
+.sc{position:relative;height:24px;background:var(--p0);border:1px solid var(--ln2);border-radius:2px;overflow:hidden}
+.sc .grad{position:absolute;inset:0;opacity:.30}
+.sc .tk{position:absolute;top:0;bottom:0;width:1px;background:#0B0D10;opacity:.75}
+.sc .mk{position:absolute;top:-1px;bottom:-1px;width:2px;background:var(--t1);box-shadow:0 0 0 1px rgba(0,0,0,.65)}
+.sc .lo,.sc .hi{position:absolute;top:5px;font-family:var(--mono);font-size:11px;color:var(--t4)}
+.sc .lo{left:5px}.sc .hi{right:5px}
+.sc .val{position:absolute;top:4px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:12px;
+  display:flex;align-items:baseline;gap:6px}
+.sc .val .lt{font-size:12px;font-weight:600}
+.axis{position:relative;height:16px;margin-top:4px}
+.axis span{position:absolute;top:0;transform:translateX(-50%);font-family:var(--mono);font-size:11px}
+
+/* ===== queue ===== */
+.q{display:flex;border-bottom:1px solid var(--ln);cursor:pointer}
+.q:hover{background:var(--p1)}
+.q .chan{width:3px;flex-shrink:0}
+.q .in{flex:1;min-width:0;padding:9px 13px}
+.q .r1{display:flex;align-items:baseline;gap:8px}
+.q .nm{font-size:12.5px;color:#D9DDE3}
+.q .cd{font-family:var(--mono);font-size:11px}
+.q .r2{font-family:var(--mono);font-size:11px;color:var(--t3);margin-top:3px}
+.q .rt{width:96px;flex-shrink:0;padding:9px 13px 9px 0;text-align:right;border-left:1px solid var(--ln)}
+.q .dd{font-family:var(--mono);font-size:13px}
+.q .wt{font-family:var(--mono);font-size:11px;color:var(--t3);margin-top:3px}
+
+/* ===== task input ===== */
+.tin{padding:11px 13px;border-bottom:1px solid var(--ln);background:var(--p0)}
+.tin .row{display:flex;gap:6px;margin-top:6px}
+.tin input,.tin select{background:var(--p1);border:1px solid var(--ln2);color:var(--t1);border-radius:2px;
+  padding:6px 8px;font-family:var(--mono);font-size:12px;outline:none}
+.tin input:focus,.tin select:focus{border-color:var(--ln3)}
+.tin input.big{width:100%}
+.tin .row select{flex:0 0 96px}
+.tin .row input[type=date]{flex:0 0 132px}
+.tin button{flex:1;background:var(--p2);border:1px solid var(--ln3);color:var(--t1);border-radius:2px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.08em;cursor:pointer;padding:6px}
+.tin button:hover{background:var(--ln2)}
+.tk{display:flex;align-items:center;gap:9px;padding:7px 13px;border-bottom:1px solid var(--ln)}
+.tk .bx{width:13px;height:13px;border:1px solid var(--ln3);border-radius:2px;cursor:pointer;flex-shrink:0}
+.tk .bx.on{background:var(--ok);border-color:var(--ok)}
+.tk .lbl{flex:1;font-size:12.5px;color:#CFD5DC}
+.tk .lbl.done{text-decoration:line-through;color:var(--t4)}
+.tk .dt{font-family:var(--mono);font-size:11px;color:var(--t3)}
+.tk .x{color:var(--t4);cursor:pointer;font-size:14px;line-height:1}
+.tk .x:hover{color:var(--hot)}
+
+/* ===== calendar ===== */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--ln)}
+.calhd{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--ln);border-bottom:1px solid var(--ln2)}
+.calhd div{background:var(--band);padding:6px 0;text-align:center;font-family:var(--mono);font-size:11px;
+  letter-spacing:.12em;color:#A9B1BB}
+.cal .cd{background:var(--p0);min-height:118px;padding:5px 6px 6px;display:flex;flex-direction:column;gap:3px}
+.cal .cd.out{background:#08090B}
+.cal .cd.today{background:var(--p2);box-shadow:inset 0 0 0 1px var(--ln3)}
+.cal .cd .n{font-family:var(--mono);font-size:11px;color:var(--t3)}
+.cal .cd.out .n{color:#262C34}
+.cal .ev{border-radius:2px;padding:2px 5px;font-family:var(--mono);font-size:11px;cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:2px solid}
+.cal .ev.att{opacity:.42}
+.cal .ev.miss{background:#2A1416 !important;color:#E2615F !important;border-left-color:#E2615F !important}
+.cal .dl{border-radius:2px;padding:2px 5px;font-family:var(--mono);font-size:11px;color:#06090B;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+
+/* ===== topic schedule ===== */
+.tp{display:flex;align-items:flex-start;gap:10px;padding:7px 13px;border-bottom:1px solid var(--ln);cursor:pointer}
+.tp:hover{background:var(--p1)}
+.tp .bx{width:13px;height:13px;border:1px solid var(--ln3);border-radius:2px;flex-shrink:0;margin-top:2px}
+.tp .bx.on{background:var(--ch2);border-color:var(--ch2)}
+.tp .dt{font-family:var(--mono);font-size:11px;color:var(--t3);width:50px;flex-shrink:0}
+.tp .nm{flex:1;font-size:12.5px;color:#CFD5DC}
+.tp.past .nm{color:var(--t2)}
+.tp.future .nm{color:var(--t3)}
+.tp .rd{font-family:var(--mono);font-size:11px;color:var(--t4);margin-left:auto;flex-shrink:0}
+
+/* ===== tables ===== */
+.gt{width:100%;border-collapse:collapse}
+.gt th{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--t3);text-align:left;padding:7px 13px;
+  border-bottom:1px solid var(--ln2);background:var(--p0);letter-spacing:.06em}
+.gt th.r{text-align:right}
+.gt td{padding:7px 13px;border-bottom:1px solid var(--ln);font-size:12.5px;color:#D2D7DE}
+.gt td.r{text-align:right;font-family:var(--mono);font-size:12px}
+.gt tr:hover td{background:var(--p1)}
+.gt tr.hl td{background:#151B22}
+.gt input{width:52px;background:var(--p0);border:1px solid var(--ln2);color:var(--t1);border-radius:2px;
+  padding:3px 5px;font-family:var(--mono);font-size:12px;text-align:right;outline:none}
+.chip{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:2px;border:1px solid}
+
+/* ===== pipeline ===== */
+.pstage{display:flex;gap:11px;position:relative;padding-bottom:15px}
+.pstage .spine{position:absolute;left:8px;top:18px;bottom:-2px;width:1px;background:var(--ln2)}
+.pstage:last-child .spine{display:none}
+.pstage:last-child{padding-bottom:4px}
+.pstage .node{width:17px;height:17px;border-radius:2px;border:1px solid var(--ln3);flex-shrink:0;display:flex;
+  align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:var(--t3);background:var(--p0);z-index:1}
+.pstage.now .node{border-color:var(--ch2);color:var(--ch2)}
+.pstage .pt{display:flex;align-items:baseline;justify-content:space-between}
+.pstage .pn{font-size:12.5px;color:#D9DDE3}
+.pstage.wait .pn{color:var(--t3)}
+.pstage .pw{font-family:var(--mono);font-size:11px;color:var(--t3)}
+.pstage .pm{font-family:var(--mono);font-size:11px;color:var(--t3);margin-top:3px}
+
+/* course selector */
+.csel{display:flex;border-bottom:1px solid var(--ln2)}
+.csel button{flex:1;background:var(--p0);border:none;border-right:1px solid var(--ln);padding:9px 11px;text-align:left;cursor:pointer}
+.csel button:last-child{border-right:none}
+.csel button:hover{background:var(--p1)}
+.csel button.on{background:var(--p2)}
+.csel .cc{font-family:var(--mono);font-size:12px}
+.csel .cn{font-size:11px;color:var(--t3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scroll{overflow-y:auto;max-height:440px}
+</style>
+</head>
+<body>
+
+<div class="sys">
+  <div class="id"><i></i><b>FALL26</b></div>
+  <button class="mode on" data-v="inbox"><kbd>1</kbd>INBOX</button>
+  <button class="mode" data-v="calendar"><kbd>2</kbd>CALENDAR</button>
+  <button class="mode" data-v="courses"><kbd>3</kbd>COURSES</button>
+  <button class="mode" data-v="semester"><kbd>4</kbd>SEMESTER</button>
+  <button class="mode" data-v="review"><kbd>5</kbd>REVIEW</button>
+  <div class="rt">
+    <span class="k">wk <span class="v">03</span>/15</span>
+    <span class="k">logged <span class="v" id="hdHours">11.5h</span></span>
+    <span class="k">absences <span class="v" id="hdAbs">0</span></span>
+    <span class="v">WED 16 SEP</span>
+  </div>
+</div>
+
+<div class="cmd">
+  <span class="pr">&gt;</span>
+  <input id="cli" placeholder="log ec490 2h data-section 4   ·   done blog3   ·   add ma581 rework ch3 fri   ·   ? for commands">
+  <span class="hint">⌘K</span>
+</div>
+
+<!-- ============ INBOX ============ -->
+<div class="view on" id="v-inbox">
+  <div class="split" id="sp-inbox">
+    <div class="col" style="flex:0 0 58%">
+      <div class="ph"><h2>QUEUE</h2><span class="meta">next 21d · nearest first</span></div>
+      <div id="queue"></div>
+
+      <div class="ph"><h2>MY TASKS</h2><span class="meta">your own, not from a syllabus</span></div>
+      <div class="tin">
+        <input class="big" id="tkName" placeholder="what do you need to do">
+        <div class="row">
+          <select id="tkCourse"></select>
+          <input type="date" id="tkDate" value="2026-09-18">
+          <button onclick="addTask()">ADD  ⏎</button>
+        </div>
+      </div>
+      <div id="tasks"></div>
+    </div>
+    <div class="gut" data-split="sp-inbox"></div>
+    <div class="col" style="flex:1 1 0">
+      <div class="ph"><h2>WEEK 03</h2><span class="meta">14–20 sep · 10.8 contact h</span></div>
+      <div id="weekstrip"></div>
+      <div class="stats" id="weekstats"></div>
+
+      <div class="ph"><h2>STANDING</h2><span class="meta">BU scale · marker = current</span></div>
+      <div id="standing" style="padding:12px 13px 14px"></div>
+
+      <div class="ph"><h2>EXPOSURE</h2><span class="meta">ma 581 midterm · 14d · from your log</span></div>
+      <div id="topics" style="padding:8px 0 10px"></div>
+      <div class="stats" id="topicstats"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CALENDAR ============ -->
+<div class="view" id="v-calendar">
+  <div class="ph">
+    <h2 id="calTitle">OCTOBER 2026</h2>
+    <span class="meta">click a class block to cycle attended / absent · <span id="calNav"></span></span>
+  </div>
+  <div class="calhd"><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div><div>SUN</div></div>
+  <div class="cal" id="cal"></div>
+  <div class="stats" id="calstats"></div>
+  <div class="ph"><h2>ATTENDANCE</h2><span class="meta">policy limits per course</span></div>
+  <div id="attend" style="padding:12px 13px 16px"></div>
+</div>
+
+<!-- ============ COURSES ============ -->
+<div class="view" id="v-courses">
+  <div class="csel" id="csel"></div>
+  <div class="split" id="sp-courses">
+    <div class="col" style="flex:0 0 32%">
+      <div class="ph"><h2>TOPIC SCHEDULE</h2><span class="meta">from syllabus · click to mark covered</span></div>
+      <div class="scroll" id="sched"></div>
+      <div class="stats" id="schedstats"></div>
+    </div>
+    <div class="gut"></div>
+    <div class="col" style="flex:0 0 34%">
+      <div class="ph"><h2 id="pipe-h">ASSESSMENT</h2><span class="meta" id="pipe-m"></span></div>
+      <div id="pipe" style="padding:14px 13px 6px"></div>
+      <div class="ph"><h2>GRADE COMPOSITION</h2><span class="meta">enter scores</span></div>
+      <table class="gt" id="gtable"></table>
+    </div>
+    <div class="gut"></div>
+    <div class="col" style="flex:1 1 0">
+      <div class="ph"><h2>LOG A SESSION</h2><span class="meta">after the fact</span></div>
+      <div class="tin">
+        <select id="lgTopic" style="width:100%;margin-bottom:6px"></select>
+        <div class="row">
+          <input id="lgMins" type="number" min="5" step="5" placeholder="minutes" style="flex:0 0 88px">
+          <select id="lgConf" style="flex:1">
+            <option value="">how solid?</option>
+            <option value="1">1 · lost</option>
+            <option value="2">2 · shaky</option>
+            <option value="3">3 · ok</option>
+            <option value="4">4 · solid</option>
+            <option value="5">5 · fluent</option>
+          </select>
+          <button onclick="addSession()" style="flex:0 0 68px">LOG</button>
+        </div>
+      </div>
+      <div class="ph"><h2>TOPIC EFFORT</h2><span class="meta">hours logged · confidence</span></div>
+      <div id="topiceffort" style="padding:8px 0 10px;max-height:290px;overflow-y:auto"></div>
+      <div class="stats" id="teffstats"></div>
+      <div class="ph"><h2>RECENT</h2><span class="meta">last 8 sessions</span></div>
+      <div id="recentsessions"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SEMESTER ============ -->
+<div class="view" id="v-semester">
+  <div class="ph"><h2>SEMESTER LOAD</h2><span class="meta">click any bar to inspect that week</span></div>
+  <div style="padding:16px 16px 4px"><svg id="semchart" width="100%" viewBox="0 0 980 214" style="display:block"></svg></div>
+  <div class="stats" id="semstats"></div>
+  <div class="ph"><h2 id="regTitle">DEADLINE REGISTER</h2><span class="meta" id="regMeta">all graded items</span></div>
+  <table class="gt" id="register"></table>
+</div>
+
+<!-- ============ REVIEW ============ -->
+<div class="view" id="v-review">
+  <div class="split" id="sp-review">
+    <div class="col" style="flex:0 0 40%">
+      <div class="ph"><h2 id="recapTitle">WEEK 02 · CLOSED</h2><span class="meta" id="recapMeta">7–13 sep</span></div>
+      <div style="padding:14px 13px 4px">
+        <div id="recapStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--ln)"></div>
+      </div>
+      <div class="ph"><h2>STREAK</h2><span class="meta">weeks meeting your baseline</span></div>
+      <div id="streak" style="padding:13px 13px 6px"></div>
+      <div class="stats" id="streakstats"></div>
+      <div class="ph"><h2>CARRIED OVER</h2><span class="meta">unfinished from week 02</span></div>
+      <div style="padding:11px 13px 15px">
+        <p style="font-size:12.5px;line-height:1.75;color:var(--t2)">EC 490 data exploration, scheduled Thursday, not logged. It now sits 20 days from the data section deadline, which carries a zero for late submission.</p>
+      </div>
+    </div>
+    <div class="gut"></div>
+    <div class="col" style="flex:1 1 0">
+      <div class="ph"><h2>HOURS BY WEEK</h2><span class="meta">stacked by course · from your session log</span></div>
+      <div style="padding:14px 14px 4px"><svg id="trendHours" width="100%" viewBox="0 0 760 170" style="display:block"></svg></div>
+      <div class="stats" id="trendstats"></div>
+
+      <div class="ph"><h2>CONFIDENCE TREND</h2><span class="meta">mean rating per week · 1–5</span></div>
+      <div style="padding:14px 14px 4px"><svg id="trendConf" width="100%" viewBox="0 0 760 130" style="display:block"></svg></div>
+      <div class="stats" id="confstats"></div>
+
+      <div class="ph"><h2>EFFORT vs WEIGHT</h2><span class="meta">share of hours against equal credit</span></div>
+      <div id="effwt" style="padding:13px 13px 6px"></div>
+      <div class="stats" id="effwtstats"></div>
+
+      <div class="ph"><h2>TOPIC COVERAGE</h2><span class="meta">marked covered / scheduled</span></div>
+      <div id="cover" style="padding:13px 13px 6px"></div>
+
+      <div class="ph"><h2>WEEK 04 AHEAD</h2><span class="meta">21–27 sep</span></div>
+      <div style="padding:12px 13px 10px">
+        <p style="font-size:12.5px;line-height:1.75;color:var(--t2)">One blog post and the last clear week before the MA 581 midterm on 30 sep. EC 332 covers oligopoly in both sessions, the chapter 7 material the midterm leans on, and MA 581 reaches continuous random variables.</p>
+      </div>
+      <div style="padding:0 13px 16px">
+        <span onclick="wipe()" style="font-family:var(--mono);font-size:11px;color:var(--t4);border:1px solid var(--ln2);border-radius:2px;padding:4px 9px;cursor:pointer">clear all stored data</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= data ================= */
+const CH={
+  ec490:{code:'EC 490',name:'Auction Theory & Practice',col:'#46B8D4',days:[2,4],time:'11:00',room:'FLR 122',abs:null},
+  ly283:{code:'LY 283',name:'Arab Culture Through Film',col:'#CE6FA0',days:[2,4],time:'12:30',room:'CAS 427',abs:3},
+  ec332:{code:'EC 332',name:'Industrial Organization',col:'#E0A340',days:[2,4],time:'14:00',room:'CAS 216',abs:null},
+  ma581:{code:'MA 581',name:'Probability',col:'#67C08A',days:[1,3],time:'12:20',room:'—',abs:null}
+};
+/* one row per meeting pattern — MA 581 splits into lecture + discussion */
+const MEET=[
+  {k:'ma581-dis',c:'ma581',days:[2],   time:'9:05', end:'9:55',  cap:null, tag:'disc'},
+  {k:'ec490',    c:'ec490',days:[2,4], time:'11:00',end:'12:15', cap:null, tag:''},
+  {k:'ma581-lec',c:'ma581',days:[1,3], time:'12:20',end:'13:35', cap:null, tag:'lec'},
+  {k:'ly283',    c:'ly283',days:[2,4], time:'12:30',end:'13:45', cap:3,    tag:''},
+  {k:'ec332',    c:'ec332',days:[2,4], time:'14:00',end:'15:15', cap:null, tag:''}
+];
+const ORDER=['ec490','ec332','ma581','ly283'];
+const TODAY=new Date(2026,8,16);
+
+/* lecture topic schedules, straight from each syllabus */
+const SCHED={
+ ec332:[['Sep 3','Introduction',''],['Sep 8','Review: competitive markets and monopoly',''],
+  ['Sep 10','Game theory','ch 4'],['Sep 15','Monopoly','ch 5'],['Sep 17','Perfect competition','ch 6'],
+  ['Sep 22','Oligopoly competition','ch 7'],['Sep 24','Oligopoly competition','ch 7'],
+  ['Sep 29','Market structure and market power','ch 9'],['Oct 1','Collusion','ch 8'],
+  ['Oct 6','Collusion','ch 8'],['Oct 8','Review class',''],['Oct 13','No class',''],
+  ['Oct 15','Midterm 1',''],['Oct 20','Auctions and procurement',''],['Oct 22','Auctions and procurement',''],
+  ['Oct 27','Price discrimination',''],['Oct 29','Price discrimination',''],
+  ['Nov 3','Vertical relationships','ch 10'],['Nov 5','Vertical relationships','ch 11'],
+  ['Nov 10','Product differentiation','ch 11'],['Nov 12','Product differentiation','ch 12'],
+  ['Nov 17','AI and markets: algorithmic pricing',''],['Nov 19','AI and markets: TBD',''],
+  ['Nov 24','AI and markets: TBD',''],['Nov 26','No class',''],['Dec 1','R&D and competition',''],
+  ['Dec 3','Building trust in markets (Bitcoin)',''],['Dec 8','No class',''],['Dec 10','Midterm 2','']],
+ ec490:[['Sep 3','Introduction: auctions and data',''],['Sep 8','Second-price auctions',''],
+  ['Sep 10','Second-price auctions',''],['Sep 15','Identification of SPA + simulated data',''],
+  ['Sep 17','First-price auctions',''],['Sep 22','First-price auctions',''],['Sep 24','First-price auctions',''],
+  ['Sep 29','Empirical strategy',''],['Oct 1','Empirical strategy',''],
+  ['Oct 6','Practice with simulated data','data §'],['Oct 8','FPA with asymmetric bidders',''],
+  ['Oct 13','No class',''],['Oct 15','FPA with asymmetric bidders',''],
+  ['Oct 20','Optimal reserve prices','model §'],['Oct 22','Auctions vs negotiations',''],
+  ['Oct 27','Collusion in auctions',''],['Oct 29','Collusion in auctions',''],
+  ['Nov 3','Q&A and paper workshop',''],['Nov 5','Q&A and paper workshop',''],
+  ['Nov 10','Student presentations (others)','emp §'],['Nov 12','Student presentations (others)',''],
+  ['Nov 17','Vickrey–Clarke–Groves auctions',''],['Nov 19','Auctions for blockchain',''],
+  ['Nov 24','Auctions for blockchain',''],['Nov 26','No class',''],
+  ['Dec 1','Counterfactual analysis','results §'],['Dec 3','Student presentations (yours)',''],
+  ['Dec 8','Student presentations',''],['Dec 10','Student presentations · last class','']],
+ ma581:[['Wk 1','Foundations of probability','2.1–4'],['Wk 2','Equally likely outcomes, combinatorics','1.1–5'],
+  ['Wk 3','Conditioning, independence, Bayes','3.1–5'],['Wk 4','Discrete random variables','4.1–8'],
+  ['Wk 5','Continuous random variables','4.10, 5.1–5'],['Wk 6','Random vectors, joint distributions','6.1–5'],
+  ['Wk 7','Joint / marginal / conditional','6.1–5'],['Wk 8','Expectation','7.1–6'],
+  ['Wk 9','Variance and properties','7.4'],['Wk 10','The normal distribution','5.4'],
+  ['Wk 11','Central limit theorem','8.1, 8.3'],['Wk 12','Moment generating functions','7.7, 8.2–3'],
+  ['Wk 13','Convolution, gamma and beta, order stats','5.6, 6.6']],
+ ly283:[['Wk 2','Bittersweet · group 1',''],['Wk 3','The Battle of Algiers · group 2',''],
+  ['Wk 4','Silences of the Palace · group 3',''],['Wk 5','Historical event topics',''],
+  ['Wk 6','The Dupes · group 4',''],['Wk 7','Where Do We Go Now? · group 5',''],
+  ['Wk 8','(schedule pending Blackboard update)',''],['Wk 9','The Swimmers · group 6',''],
+  ['Wk 10','The Time That Remains · group 7',''],['Wk 11','The Perfect Candidate · group 8',''],
+  ['Wk 12','Ghadi · group 9',''],['Wk 13','(schedule pending Blackboard update)','']]
+};
+
+const GRADES={
+  ec490:[['Data section','5%',null],['Model section','10%',null],['Empirical strategy','10%',null],
+         ['Results section','10%',null],['Presentation & Q&A','20%',null],['Final paper','45%',null]],
+  ec332:[['Participation','10%',94],['Case questionnaires','10%',94],['Midterm 1','20 or 40%',null],
+         ['Midterm 2','20 or 40%',null],['Final project','20%',null]],
+  ma581:[['Midterm 1','33%',null],['Midterm 2','33%',null],['Final exam','34%',null]],
+  ly283:[['Attendance & participation','20%',96],['Artifact presentation','20%',null],
+         ['Blog posts','20%',96],['Collaborative paper','20%',null],['Video group project','20%',null]]
+};
+const PIPE={ec490:[['Data section','5%','6 oct','now'],['Model section','10%','20 oct','wait'],
+  ['Empirical strategy','10%','10 nov','wait'],['Results section','10%','1 dec','wait'],
+  ['Presentation & Q&A','20%','see timetable','wait'],['Final paper','45%','14 dec (timetable says 15)','wait']]};
+
+const DEADLINES=[
+  ['2026-09-16','ly283','Blog post 3','2%'],['2026-09-18','ly283','Group agreement','—'],
+  ['2026-09-23','ly283','Blog post 4','2%'],['2026-09-30','ma581','Midterm 1','33%'],
+  ['2026-10-06','ec490','Data section','5%'],['2026-10-07','ly283','Blog post 6','2%'],
+  ['2026-10-15','ec332','Midterm 1','20/40%'],['2026-10-20','ec490','Model section','10%'],
+  ['2026-10-23','ly283','Collaborative paper','20%'],['2026-10-28','ma581','Midterm 2','33%'],
+  ['2026-11-10','ec490','Empirical strategy','10%'],['2026-12-01','ec490','Results section','10%'],
+  ['2026-12-07','ly283','Video group project','20%'],['2026-12-10','ec332','Midterm 2','20/40%'],
+  ['2026-12-14','ec490','Final paper','45%'],['2026-12-15','ec332','Final project','20%'],
+  ['2026-12-16','ma581','Final exam','34%']
+];
+const STANDING={ec490:null,ec332:94.0,ma581:null,ly283:96.0};
+const SETTLED={ec490:0,ec332:20,ma581:0,ly283:8};
+
+/* ================= state ================= */
+const S={covered:{},attend:{},tasks:[],sessions:null,week:null};
+try{const r=localStorage.getItem('fall26v5');if(r)Object.assign(S,JSON.parse(r));}catch(e){}
+function save(){try{localStorage.setItem('fall26v5',JSON.stringify(S));}catch(e){}}
+
+/* week 1 = 3–6 sep, week 2 = 7–13 sep, and so on */
+function weekOf(iso){
+  const d=dstr(iso), base=new Date(2026,8,7);
+  if(d<base) return 1;
+  return Math.min(15, Math.floor((d-base)/(7*864e5))+2);
+}
+if(S.sessions===null){
+  S.sessions=[
+    {c:'ma581',t:'Wk 1 · Foundations of probability',m:120,cf:4,d:'2026-09-04'},
+    {c:'ec332',t:'Game theory',m:60,cf:3,d:'2026-09-10'},
+    {c:'ma581',t:'Wk 2 · Equally likely outcomes, combinatorics',m:90,cf:2,d:'2026-09-09'},
+    {c:'ec490',t:'Second-price auctions',m:105,cf:3,d:'2026-09-09'},
+    {c:'ly283',t:'Wk 2 · Bittersweet · group 1',m:60,cf:4,d:'2026-09-11'},
+    {c:'ma581',t:'Wk 2 · Equally likely outcomes, combinatorics',m:60,cf:2,d:'2026-09-12'},
+    {c:'ec490',t:'Identification of SPA + simulated data',m:150,cf:2,d:'2026-09-15'},
+    {c:'ma581',t:'Wk 3 · Conditioning, independence, Bayes',m:90,cf:3,d:'2026-09-15'},
+    {c:'ec332',t:'Monopoly',m:45,cf:4,d:'2026-09-15'}
+  ];
+  save();
+}
+
+const el=id=>document.getElementById(id);
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const BANDS=[[60,70,'D'],[70,73,'C-'],[73,77,'C'],[77,80,'C+'],[80,83,'B-'],
+             [83,87,'B'],[87,90,'B+'],[90,93,'A-'],[93,100,'A']];
+function pos(v){return Math.max(0,Math.min(100,(v-60)/40*100));}
+function scaleCell(v,lo,hi){
+  const ticks=BANDS.slice(1).map(b=>`<span class="tk" style="left:${pos(b[0])}%"></span>`).join('');
+  const bar = v===null
+    ? `<div class="sc"><span class="lo">${lo}</span><span class="hi">${hi}</span>
+        ${ticks}<span class="val" style="color:var(--t4)">no graded work</span></div>`
+    : `<div class="sc">
+        <span class="grad" style="background:linear-gradient(90deg,#E2615F 0%,#D9A648 42%,#5FB283 100%)"></span>
+        ${ticks}
+        <span class="lo">${lo}</span><span class="hi">${hi}</span>
+        <span class="mk" style="left:${pos(v).toFixed(1)}%"></span>
+        <span class="val">${v.toFixed(1)}</span></div>`;
+  const axis=`<div class="axis">`+BANDS.map(b=>{
+      const mid=pos((b[0]+b[1])/2), on = v!==null && v>=b[0] && v<b[1];
+      return `<span style="left:${mid.toFixed(1)}%;color:${on?'#E6E3DA':'var(--t4)'}">${b[2]}</span>`;
+    }).join('')+`</div>`;
+  return bar+axis;
+}
+const stat=(k,v)=>`<span>${k} <b>${v}</b></span>`;
+
+/* ================= inbox ================= */
+function dstr(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);}
+function dleft(s){return Math.round((dstr(s)-TODAY)/864e5);}
+function renderQueue(){
+  const up=DEADLINES.filter(d=>{const n=dleft(d[0]);return n>=0&&n<=21;});
+  el('queue').innerHTML=up.map(([dt,c,nm,wt])=>{
+    const n=dleft(dt),ch=CH[c];
+    const col=n<=0?'var(--hot)':(n<=3?'var(--warn)':'var(--t2)');
+    return`<div class="q"><div class="chan" style="background:${ch.col}"></div>
+      <div class="in"><div class="r1"><span class="cd" style="color:${ch.col}">${ch.code}</span>
+      <span class="nm">${nm}</span></div>
+      <div class="r2">${dstr(dt).getDate()} ${MN[dstr(dt).getMonth()].toLowerCase()}</div></div>
+      <div class="rt"><div class="dd" style="color:${col}">${n===0?'today':n+'d'}</div>
+      <div class="wt">${wt}</div></div></div>`;}).join('');
+}
+function renderTasks(){
+  el('tasks').innerHTML=S.tasks.length?S.tasks.map((t,i)=>{
+    const ch=CH[t.c]||{col:'#646C77',code:'GEN'};
+    return`<div class="tk"><div class="bx ${t.done?'on':''}" onclick="togTask(${i})"></div>
+      <span class="lbl ${t.done?'done':''}">${t.nm}</span>
+      <span class="dt" style="color:${ch.col}">${ch.code}</span>
+      <span class="dt">${t.d?t.d.slice(5):''}</span>
+      <span class="x" onclick="delTask(${i})">×</span></div>`;}).join('')
+    :`<div style="padding:12px 13px;color:var(--t4);font-size:12px">No tasks yet. Add one above.</div>`;
+}
+window.togTask=i=>{S.tasks[i].done=!S.tasks[i].done;save();renderTasks();};
+window.delTask=i=>{S.tasks.splice(i,1);save();renderTasks();};
+window.addTask=()=>{
+  const nm=el('tkName').value.trim();if(!nm)return;
+  S.tasks.push({nm,c:el('tkCourse').value,d:el('tkDate').value,done:false});
+  el('tkName').value='';save();renderTasks();
+};
+el('tkCourse').innerHTML=ORDER.map(k=>`<option value="${k}">${CH[k].code}</option>`).join('')+'<option value="gen">GEN</option>';
+el('tkName').addEventListener('keydown',e=>{if(e.key==='Enter')addTask();});
+
+const WEEKDAYS=[['MON',14,1],['TUE',15,2],['WED',16,3],['THU',17,4],['FRI',18,5],['SAT',19,6],['SUN',20,0]];
+function renderWeekStrip(){
+  el('weekstrip').innerHTML=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--ln)">`+
+   WEEKDAYS.map(([d,n,dow])=>{
+    const todays=MEET.filter(m=>m.days.includes(dow));
+    const bg=n===16?'var(--p2)':(todays.length?'var(--p0)':'#08090B');
+    const blocks=todays.map(m=>
+      `<div style="background:${CH[m.c].col};border-radius:1px;padding:3px 4px;font-family:var(--mono);font-size:11px;color:#06090B;margin-bottom:2px">${CH[m.c].code.replace(' ','')} ${m.time}${m.tag?'·'+m.tag.charAt(0):''}</div>`).join('');
+    const due=DEADLINES.filter(x=>dstr(x[0]).getDate()===n&&dstr(x[0]).getMonth()===8)
+      .map(x=>`<div style="font-family:var(--mono);font-size:11px;color:var(--t2);margin-top:3px;display:flex;gap:5px;align-items:center"><i style="width:5px;height:5px;background:${CH[x[1]].col};border-radius:1px;display:block"></i>${x[2]}</div>`).join('');
+    return`<div style="background:${bg};padding:8px 7px 11px;min-height:172px">
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--t3);margin-bottom:8px">
+        <span>${d}</span><b style="color:var(--t2);font-weight:400">${n}</b></div>
+      ${blocks}${due}</div>`;}).join('')+`</div>`;
+  el('weekstats').innerHTML=stat('contact h','10.8')+stat('meetings','11')+stat('heaviest','tue · 4 sessions, 9:05–15:15')+
+    stat('clear','fri sat sun')+stat('due','2');
+}
+
+function renderStanding(){
+  el('standing').innerHTML=ORDER.map(k=>{
+    const c=CH[k];
+    return`<div style="margin-bottom:11px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
+        <span class="m" style="font-size:11px;color:${c.col}">${c.code}</span>
+        <span class="m" style="font-size:11px;color:var(--t3)">${SETTLED[k]}% settled</span></div>
+      ${scaleCell(STANDING[k],60,100)}</div>`;}).join('')+
+    `<p style="font-size:11.5px;line-height:1.7;color:var(--t3);margin-top:11px;padding-top:10px;border-top:1px solid var(--ln)">
+     Cutoffs beneath each bar are the BU scale. EC 490 returns nothing until 6 oct and MA 581 nothing until 30 sep, so those bars stay empty rather than showing a flattering number built on no evidence.</p>`;
+}
+function renderTopics(){
+  const rows=SCHED.ma581.filter(r=>r[1]!=='No class');
+  const data=rows.map(r=>{
+    const label=r[0]+' · '+r[1];
+    const sess=S.sessions.filter(s=>s.c==='ma581'&&s.t===label);
+    const h=sess.reduce((a,s)=>a+s.m,0)/60;
+    const cf=sess.length?sess.reduce((a,s)=>a+s.cf,0)/sess.length:0;
+    return [r[1],cf,h];
+  }).slice(0,8);
+  el('topics').innerHTML=data.map(([nm,cf,h])=>{
+    const col=cf===0?'#2C333C':(cf<=1.5?'#E2615F':(cf<=2.5?'#D9A648':(cf<=3.5?'#B9A24E':'#5FB283')));
+    const cells=[1,2,3,4,5].map(i=>
+      `<b style="flex:1;height:7px;border-radius:1px;background:${cf>0&&i<=Math.round(cf)?col:'#1A1F26'}"></b>`).join('');
+    return`<div style="display:flex;align-items:center;gap:10px;padding:5px 13px">
+      <span style="font-size:12px;color:${cf?'#A8B0BA':'var(--t3)'};width:170px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${nm}">${nm}</span>
+      <div style="flex:1;display:flex;gap:2px">${cells}</div>
+      <span class="m" style="font-size:11px;color:var(--t3);width:32px;text-align:right">${h?h.toFixed(1)+'h':'—'}</span></div>`;
+  }).join('');
+  const touched=data.filter(d=>d[1]>0);
+  const weakest=touched.length?touched.reduce((w,d)=>d[1]<w[1]?d:w):null;
+  el('topicstats').innerHTML=stat('topics',data.length)+stat('touched',touched.length)+
+    stat('Σh',data.reduce((a,d)=>a+d[2],0).toFixed(1))+
+    stat('x̄ conf',touched.length?(touched.reduce((a,d)=>a+d[1],0)/touched.length).toFixed(1)+'/5':'—')+
+    stat('weakest',weakest?weakest[0].slice(0,24):'—');
+}
+
+/* ================= calendar ================= */
+let calM=9; // october
+function renderCal(){
+  const y=2026,first=new Date(y,calM,1),days=new Date(y,calM+1,0).getDate();
+  let start=first.getDay();start=start===0?6:start-1;
+  el('calTitle').textContent=['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST',
+    'SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'][calM]+' 2026';
+  el('calNav').innerHTML=[8,9,10,11].map(m=>
+    `<span onclick="setMonth(${m})" style="cursor:pointer;padding:0 5px;color:${m===calM?'var(--t1)':'var(--t4)'}">${MN[m].toLowerCase()}</span>`).join('');
+  let h='';
+  for(let i=0;i<start;i++)h+=`<div class="cd out"><span class="n"></span></div>`;
+  let attCount=0,missCount=0,lect=0;
+  for(let d=1;d<=days;d++){
+    const dt=new Date(y,calM,d),dow=dt.getDay(),iso=`2026-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday=(calM===8&&d===16);
+    let ev='';
+    MEET.forEach(m=>{
+      if(!m.days.includes(dow))return;
+      const c=CH[m.c];
+      const row=SCHED[m.c].find(r=>r[0]===`${MN[calM]} ${d}`);
+      if(row&&row[1]==='No class')return;
+      lect++;
+      const key=m.k+'|'+iso,st=S.attend[key]||'';
+      if(st==='att')attCount++;if(st==='miss')missCount++;
+      const lbl=row?row[1]:c.code;
+      ev+=`<div class="ev ${st==='att'?'att':''} ${st==='miss'?'miss':''}" onclick="cycAtt('${key}')"
+        style="background:${c.col}22;border-left-color:${c.col};color:${c.col}"
+        title="${c.code}${m.tag?' '+m.tag:''} ${m.time}–${m.end} · ${lbl}">${m.time} ${c.code.replace(' ','')}${m.tag?'·'+m.tag.charAt(0):''}${st==='att'?' ✓':(st==='miss'?' ✗':'')}</div>`;
+    });
+    const dl=DEADLINES.filter(x=>x[0]===iso).map(x=>
+      `<div class="dl" style="background:${CH[x[1]].col}" title="${x[2]} · ${x[3]}">${x[2]}</div>`).join('');
+    h+=`<div class="cd${isToday?' today':''}"><span class="n">${d}</span>${ev}${dl}</div>`;
+  }
+  const rem=(7-((start+days)%7))%7;
+  for(let i=0;i<rem;i++)h+=`<div class="cd out"><span class="n"></span></div>`;
+  el('cal').innerHTML=h;
+  el('calstats').innerHTML=stat('lectures',lect)+stat('attended',attCount)+stat('absent',missCount)+
+    stat('unmarked',lect-attCount-missCount)+stat('deadlines',DEADLINES.filter(x=>+x[0].slice(5,7)===calM+1).length);
+  renderAttend();
+  el('hdAbs').textContent=Object.values(S.attend).filter(v=>v==='miss').length;
+}
+window.setMonth=m=>{calM=m;renderCal();};
+window.cycAtt=key=>{
+  const cur=S.attend[key]||'';
+  S.attend[key]=cur===''?'att':(cur==='att'?'miss':'');
+  if(!S.attend[key])delete S.attend[key];
+  save();renderCal();
+};
+function renderAttend(){
+  el('attend').innerHTML=MEET.map(m=>{
+    const c=CH[m.c];
+    const miss=Object.entries(S.attend).filter(([kk,v])=>kk.startsWith(m.k+'|')&&v==='miss').length;
+    const cap=m.cap,over=cap!==null&&miss>cap;
+    const label=c.code+(m.tag?' '+m.tag:'');
+    return`<div style="display:flex;align-items:center;gap:11px;margin-bottom:9px">
+      <span class="m" style="font-size:11px;color:${c.col};width:92px">${label}</span>
+      <div style="flex:1;display:flex;gap:2px">${Array.from({length:cap||6},(_,i)=>
+        `<b style="flex:1;height:8px;border-radius:1px;background:${i<miss?(over?'#E2615F':'#D9A648'):'#1A1F26'}"></b>`).join('')}</div>
+      <span class="m" style="font-size:11px;color:${over?'var(--hot)':'var(--t3)'};width:74px;text-align:right">
+        ${miss} / ${cap===null?'no cap':cap}</span></div>`;}).join('')+
+    `<p style="font-size:11.5px;line-height:1.7;color:var(--t3);margin-top:10px;padding-top:10px;border-top:1px solid var(--ln)">
+     LY 283 allows three absences before participation is affected. EC 490 sets no general cap but makes presentation days mandatory, and a missed presentation day scores zero. MA 581 lecture and discussion are tracked separately.</p>`;
+}
+
+/* ================= courses ================= */
+let CURR='ec490';
+function renderCsel(){
+  el('csel').innerHTML=ORDER.map(k=>`<button data-c="${k}" class="${k===CURR?'on':''}">
+    <div class="cc" style="color:${CH[k].col}">${CH[k].code}</div>
+    <div class="cn">${CH[k].name}</div></button>`).join('');
+  el('csel').querySelectorAll('button').forEach(b=>b.onclick=()=>{CURR=b.dataset.c;renderCsel();renderCourse();});
+}
+window.togCov=key=>{S.covered[key]=!S.covered[key];if(!S.covered[key])delete S.covered[key];save();renderCourse();renderCover();};
+function renderCourse(){
+  const c=CH[CURR],rows=SCHED[CURR];
+  el('sched').innerHTML=rows.map((r,i)=>{
+    const key=CURR+'|'+i,on=!!S.covered[key];
+    return`<div class="tp" onclick="togCov('${key}')">
+      <div class="bx ${on?'on':''}"></div>
+      <span class="dt">${r[0]}</span>
+      <span class="nm">${r[1]}</span>
+      ${r[2]?`<span class="rd">${r[2]}</span>`:''}</div>`;}).join('');
+  const cov=rows.filter((r,i)=>S.covered[CURR+'|'+i]).length;
+  el('schedstats').innerHTML=stat('sessions',rows.length)+stat('marked covered',cov)+
+    stat('remaining',rows.length-cov)+stat('source','syllabus timetable');
+
+  const p=PIPE[CURR];
+  const DW=['sun','mon','tue','wed','thu','fri','sat'];
+  const pattern=MEET.filter(m=>m.c===CURR)
+    .map(m=>m.days.map(d=>DW[d]).join('')+' '+m.time+(m.tag?' '+m.tag:'')).join(' · ');
+  el('pipe-h').textContent=p?'PAPER PIPELINE':'ASSESSMENT';
+  el('pipe-m').textContent=p?'6 stages · 100% of grade':pattern;
+  el('pipe').innerHTML=p?p.map(([nm,w,dt,st],i)=>`
+    <div class="pstage ${st}"><div class="spine"></div><div class="node">${i+1}</div>
+      <div style="flex:1;min-width:0"><div class="pt"><span class="pn">${nm}</span><span class="pw">${w}</span></div>
+      <div class="pm">${dt}</div></div></div>`).join('')
+    :`<p style="color:var(--t3);font-size:12.5px;line-height:1.7;padding:2px 0 8px">
+      ${c.code} is assessed through discrete events rather than a staged pipeline. Its items sit in the deadline register.</p>`;
+
+  el('gtable').innerHTML='<tr><th>COMPONENT</th><th class="r">WEIGHT</th><th class="r">SCORE</th></tr>'+
+    GRADES[CURR].map(([nm,w,v])=>`<tr><td>${nm}</td><td class="r" style="color:var(--t3)">${w}</td>
+      <td class="r"><input value="${v===null?'':v}" placeholder="—"></td></tr>`).join('');
+
+  el('lgTopic').innerHTML=rows.filter(r=>r[1]!=='No class')
+    .map(r=>`<option>${r[0]} · ${r[1]}</option>`).join('')+'<option>General / review</option>';
+  renderTopicEffort();
+  renderRecent();
+}
+
+window.addSession=()=>{
+  const t=el('lgTopic').value, m=parseInt(el('lgMins').value,10), cf=parseInt(el('lgConf').value,10);
+  if(!t||!m||!cf)return;
+  S.sessions.push({c:CURR,t,m,cf,d:'2026-09-16'});
+  el('lgMins').value='';el('lgConf').value='';
+  save();renderTopicEffort();renderRecent();renderReview();renderTopics();
+};
+window.delSession=i=>{S.sessions.splice(i,1);save();renderTopicEffort();renderRecent();renderReview();renderTopics();};
+
+function renderTopicEffort(){
+  const mine=S.sessions.filter(s=>s.c===CURR);
+  const byTopic={};
+  mine.forEach(s=>{
+    if(!byTopic[s.t])byTopic[s.t]={m:0,cf:[],n:0};
+    byTopic[s.t].m+=s.m;byTopic[s.t].cf.push(s.cf);byTopic[s.t].n++;
+  });
+  const keys=Object.keys(byTopic).sort((a,b)=>byTopic[b].m-byTopic[a].m);
+  if(!keys.length){
+    el('topiceffort').innerHTML='<div style="padding:12px 13px;color:var(--t4);font-size:12px">Nothing logged for '+CH[CURR].code+' yet.</div>';
+    el('teffstats').innerHTML=stat('sessions','0');return;
+  }
+  el('topiceffort').innerHTML=keys.map(k=>{
+    const o=byTopic[k], avg=o.cf.reduce((a,b)=>a+b,0)/o.n;
+    const col=avg<=1.5?'#E2615F':(avg<=2.5?'#D9A648':(avg<=3.5?'#B9A24E':'#5FB283'));
+    const cells=[1,2,3,4,5].map(i=>`<b style="flex:1;height:7px;border-radius:1px;background:${i<=Math.round(avg)?col:'#1A1F26'}"></b>`).join('');
+    const short=k.replace(/^(Wk \d+|[A-Z][a-z]{2} \d+) · /,'');
+    return`<div style="display:flex;align-items:center;gap:9px;padding:5px 13px">
+      <span style="font-size:12px;color:#A8B0BA;width:132px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${k}">${short}</span>
+      <div style="flex:1;display:flex;gap:2px">${cells}</div>
+      <span class="m" style="font-size:11px;color:var(--t3);width:34px;text-align:right">${(o.m/60).toFixed(1)}h</span></div>`;
+  }).join('');
+  const tot=mine.reduce((a,s)=>a+s.m,0)/60;
+  const confs=mine.map(s=>s.cf);
+  const weakest=keys.reduce((w,k)=>{
+    const a=byTopic[k].cf.reduce((x,y)=>x+y,0)/byTopic[k].n;
+    return (w===null||a<w.a)?{k,a}:w;},null);
+  el('teffstats').innerHTML=stat('sessions',mine.length)+stat('Σ',tot.toFixed(1)+'h')+
+    stat('x̄ conf',(confs.reduce((a,b)=>a+b,0)/confs.length).toFixed(1)+'/5')+
+    stat('weakest',weakest.k.replace(/^(Wk \d+|[A-Z][a-z]{2} \d+) · /,'').slice(0,22));
+}
+
+function renderRecent(){
+  const mine=S.sessions.map((s,i)=>({s,i})).filter(o=>o.s.c===CURR).reverse().slice(0,8);
+  el('recentsessions').innerHTML=mine.length?mine.map(({s,i})=>{
+    const col=s.cf<=2?'#E2615F':(s.cf<=3?'#D9A648':'#5FB283');
+    return`<div class="tk">
+      <span class="m" style="font-size:11px;color:var(--t3);width:38px">${s.d.slice(5)}</span>
+      <span class="lbl" style="font-size:12px">${s.t.replace(/^(Wk \d+|[A-Z][a-z]{2} \d+) · /,'')}</span>
+      <span class="m" style="font-size:11px;color:var(--t2)">${(s.m/60).toFixed(1)}h</span>
+      <span class="m" style="font-size:11px;color:${col}">${s.cf}/5</span>
+      <span class="x" onclick="delSession(${i})">×</span></div>`;}).join('')
+    :'<div style="padding:12px 13px;color:var(--t4);font-size:12px">No sessions yet.</div>';
+}
+
+/* ================= semester ================= */
+const LOAD=[{},{ly283:2},{ly283:2},{ly283:2},{ly283:2,ma581:33},{ly283:4,ec490:5},{ly283:2,ec332:20},
+  {ly283:22,ec490:10},{ly283:2,ma581:33},{ly283:2,ec490:10},{ly283:2},{ly283:2},
+  {ly283:2},{ly283:20,ec490:10},{ec332:40,ec490:45,ma581:34}];
+const WKLABEL=['3 sep','7 sep','14 sep','21 sep','28 sep','5 oct','12 oct','19 oct','26 oct','2 nov',
+  '9 nov','16 nov','23 nov','30 nov','7 dec'];
+let selWeek=null;
+function renderSem(){
+  const W=980,H=214,base=170,sc=1.05,bw=44,gap=(W-70-15*bw)/14;
+  let s='';
+  [0,20,40,60,80].forEach(v=>{const y=base-v*sc;
+    s+=`<line x1="46" y1="${y}" x2="${W-16}" y2="${y}" stroke="${v===0?'#242A33':'#131820'}"/>`;
+    s+=`<text x="12" y="${y+4}" fill="#3D454F" font-size="11" font-family="'IBM Plex Mono',monospace">${v}</text>`;});
+  s+=`<text x="12" y="24" fill="#646C77" font-size="11" font-family="'IBM Plex Mono',monospace">% of grade</text>`;
+  LOAD.forEach((wk,i)=>{
+    const x=46+i*(bw+gap);let y=base,tot=0;
+    ORDER.slice().reverse().forEach(k=>{const v=wk[k]||0;if(!v)return;const h=v*sc;y-=h;tot+=v;
+      s+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" fill="${CH[k].col}"/>`;});
+    if(selWeek===i) s+=`<rect x="${(x-2).toFixed(1)}" y="${(y-4).toFixed(1)}" width="${bw+4}" height="${(base-y+4).toFixed(1)}" fill="none" stroke="#E6E3DA" stroke-width="1"/>`;
+    if(tot>=30) s+=`<text x="${(x+bw/2).toFixed(1)}" y="${(y-7).toFixed(1)}" fill="#98A0AA" font-size="11" font-family="'IBM Plex Mono',monospace" text-anchor="middle">${tot}</text>`;
+    s+=`<text x="${(x+bw/2).toFixed(1)}" y="${base+15}" fill="${selWeek===i?'#98A0AA':'#3D454F'}" font-size="11" font-family="'IBM Plex Mono',monospace" text-anchor="middle">${i+1}</text>`;
+    s+=`<rect x="${x.toFixed(1)}" y="20" width="${bw}" height="${base-20}" fill="transparent" style="cursor:pointer" onclick="pickWeek(${i})"/>`;
+  });
+  const nx=46+2*(bw+gap);
+  s+=`<rect x="${nx.toFixed(1)}" y="34" width="${bw}" height="${base-34}" fill="none" stroke="#3D454F" stroke-dasharray="2 2"/>`;
+  s+=`<text x="${(nx+bw/2).toFixed(1)}" y="30" fill="#98A0AA" font-size="11" font-family="'IBM Plex Mono',monospace" text-anchor="middle">now</text>`;
+  el('semchart').innerHTML=s;
+  const tots=LOAD.map(w=>Object.values(w).reduce((a,b)=>a+b,0));
+  el('semstats').innerHTML=stat('weeks','15')+stat('peak','w15 · '+Math.max(...tots)+'%')+
+    stat('runner-up','w8 · 32%')+stat('x̄/wk',(tots.reduce((a,b)=>a+b,0)/15).toFixed(1)+'%')+
+    stat('σ',(Math.sqrt(tots.reduce((a,b)=>a+(b-tots.reduce((x,y)=>x+y,0)/15)**2,0)/15)).toFixed(1))+
+    stat('final 2 wks','47% of term');
+  renderReg();
+}
+window.pickWeek=i=>{selWeek=selWeek===i?null:i;renderSem();};
+function renderReg(){
+  let rows=DEADLINES;
+  if(selWeek!==null){
+    el('regTitle').textContent='WEEK '+(selWeek+1)+' · '+WKLABEL[selWeek];
+    el('regMeta').textContent='click the bar again to clear';
+  }else{el('regTitle').textContent='DEADLINE REGISTER';el('regMeta').textContent='all graded items · '+DEADLINES.length+' entries';}
+  el('register').innerHTML='<tr><th>COURSE</th><th>ITEM</th><th class="r">DUE</th><th class="r">WEIGHT</th></tr>'+
+    rows.map(([dt,c,nm,w])=>{
+      const d=dstr(dt);
+      const wkIdx=Math.min(15,Math.floor((d-new Date(2026,8,7))/(7*864e5))+2);
+      const hl=selWeek!==null&&wkIdx===selWeek+1;
+      return`<tr class="${hl?'hl':''}"><td><span class="chip" style="color:${CH[c].col};border-color:${CH[c].col}44">${CH[c].code}</span></td>
+      <td>${nm}</td><td class="r" style="color:var(--t2)">${d.getDate()} ${MN[d.getMonth()].toLowerCase()}</td>
+      <td class="r" style="color:var(--t3)">${w}</td></tr>`;}).join('');
+}
+
+/* ================= review ================= */
+const BASELINE=8; /* hours per week that counts as a kept week */
+function weekSessions(w){return S.sessions.filter(s=>weekOf(s.d)===w);}
+function hoursIn(w,c){return weekSessions(w).filter(s=>!c||s.c===c).reduce((a,s)=>a+s.m,0)/60;}
+
+function renderReview(){
+  /* ---- recap of the last closed week (week 2) ---- */
+  const W=2, ws=weekSessions(W), hrs=hoursIn(W);
+  const conf=ws.length?(ws.reduce((a,s)=>a+s.cf,0)/ws.length):0;
+  el('recapStats').innerHTML=[
+    ['4/5','cleared',''],
+    [hrs.toFixed(1),'hours logged',''],
+    [ws.length,'sessions',''],
+    [conf?conf.toFixed(1):'—','mean confidence','']
+  ].map(([v,k])=>`<div style="background:var(--p0);padding:12px 11px">
+      <div class="m" style="font-size:20px">${v}</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:5px">${k}</div></div>`).join('');
+
+  /* ---- streak: weeks at or above baseline ---- */
+  const upto=3;
+  let run=0;
+  for(let w=upto-1;w>=1;w--){ if(hoursIn(w)>=BASELINE) run++; else break; }
+  el('streak').innerHTML=`<div style="display:flex;gap:3px;margin-bottom:9px">`+
+    Array.from({length:15},(_,i)=>{
+      const w=i+1,h=hoursIn(w),done=h>=BASELINE,past=w<upto;
+      const bg=past?(done?'#5FB283':'#33383F'):'#141920';
+      return`<div title="week ${w} · ${h.toFixed(1)}h" style="flex:1;height:22px;border-radius:2px;background:${bg}"></div>`;
+    }).join('')+`</div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--t3)">baseline ${BASELINE}h/week</div>`;
+  el('streakstats').innerHTML=stat('current run',run+' wk')+stat('weeks closed',upto-1)+
+    stat('best week','w'+[1,2].reduce((b,w)=>hoursIn(w)>hoursIn(b)?w:b,1))+stat('baseline',BASELINE+'h');
+
+  /* ---- hours by week, stacked by course ---- */
+  (function(){
+    const W2=760,H=170,base=132,bw=34,gap=(W2-70-15*bw)/14;
+    const maxH=Math.max(10,...Array.from({length:15},(_,i)=>hoursIn(i+1)));
+    const sc=(base-24)/maxH;
+    let s='';
+    [0,Math.round(maxH/2),Math.round(maxH)].forEach(v=>{const y=base-v*sc;
+      s+=`<line x1="46" y1="${y}" x2="${W2-14}" y2="${y}" stroke="${v===0?'#242A33':'#131820'}"/>`;
+      s+=`<text x="12" y="${y+4}" fill="#3D454F" font-size="11" font-family="'IBM Plex Mono',monospace">${v}h</text>`;});
+    for(let i=0;i<15;i++){
+      const w=i+1,x=46+i*(bw+gap);let y=base;
+      ORDER.slice().reverse().forEach(k=>{
+        const h=hoursIn(w,k)*sc; if(h<=0)return; y-=h;
+        s+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" fill="${CH[k].col}"/>`;
+      });
+      s+=`<text x="${(x+bw/2).toFixed(1)}" y="${base+15}" fill="${w===3?'#98A0AA':'#3D454F'}" font-size="11" font-family="'IBM Plex Mono',monospace" text-anchor="middle">${w}</text>`;
+    }
+    s+=`<line x1="46" y1="${(base-BASELINE*sc).toFixed(1)}" x2="${W2-14}" y2="${(base-BASELINE*sc).toFixed(1)}" stroke="#5FB283" stroke-dasharray="3 3" stroke-width="1"/>`;
+    s+=`<text x="${W2-14}" y="${(base-BASELINE*sc-5).toFixed(1)}" fill="#5FB283" font-size="11" font-family="'IBM Plex Mono',monospace" text-anchor="end">baseline</text>`;
+    el('trendHours').innerHTML=s;
+  })();
+  const logged=Array.from({length:15},(_,i)=>hoursIn(i+1)).filter(h=>h>0);
+  el('trendstats').innerHTML=stat('weeks logged',logged.length)+
+    stat('Σ',logged.reduce((a,b)=>a+b,0).toFixed(1)+'h')+
+    stat('max',Math.max(...logged,0).toFixed(1)+'h')+
+    stat('min',logged.length?Math.min(...logged).toFixed(1)+'h':'—')+
+    stat('x̄',logged.length?(logged.reduce((a,b)=>a+b,0)/logged.length).toFixed(1)+'h':'—');
+
+  /* ---- confidence trend ---- */
+  (function(){
+    const W2=760,H=130,base=96,bw=34,gap=(W2-70-15*bw)/14;
+    let s='',pts=[];
+    [1,2,3,4,5].forEach(v=>{const y=base-(v-1)*((base-16)/4);
+      s+=`<line x1="46" y1="${y}" x2="${W2-14}" y2="${y}" stroke="${v===1?'#242A33':'#131820'}"/>`;
+      s+=`<text x="12" y="${y+4}" fill="#3D454F" font-size="11" font-family="'IBM Plex Mono',monospace">${v}</text>`;});
+    for(let i=0;i<15;i++){
+      const w=i+1,sess=weekSessions(w); if(!sess.length)continue;
+      const avg=sess.reduce((a,x)=>a+x.cf,0)/sess.length;
+      const x=46+i*(bw+gap)+bw/2, y=base-(avg-1)*((base-16)/4);
+      pts.push([x,y,avg,w]);
+    }
+    if(pts.length>1) s+=`<polyline points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="#98A0AA" stroke-width="1.5"/>`;
+    pts.forEach(p=>{
+      const col=p[2]<=2?'#E2615F':(p[2]<=3?'#D9A648':'#5FB283');
+      s+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="${col}"/>`;
+      s+=`<text x="${p[0].toFixed(1)}" y="${base+15}" fill="#3D454F" font-size="11" font-family="'IBM Plex Mono',monospace" text-anchor="middle">${p[3]}</text>`;});
+    el('trendConf').innerHTML=s;
+  })();
+  const allc=S.sessions.map(s=>s.cf);
+  el('confstats').innerHTML=stat('ratings',allc.length)+
+    stat('x̄',allc.length?(allc.reduce((a,b)=>a+b,0)/allc.length).toFixed(2):'—')+
+    stat('min',allc.length?Math.min(...allc):'—')+stat('max',allc.length?Math.max(...allc):'—')+
+    stat('below 3',allc.filter(c=>c<3).length);
+
+  /* ---- effort vs weight ---- */
+  const tot=ORDER.map(k=>S.sessions.filter(s=>s.c===k).reduce((a,s)=>a+s.m,0)/60);
+  const sum=tot.reduce((a,b)=>a+b,0)||1;
+  const share=tot.map(t=>t/sum*100);
+  el('effwt').innerHTML=ORDER.map((k,i)=>`<div style="margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;margin-bottom:4px">
+        <span style="color:${CH[k].col}">${CH[k].code}</span>
+        <span style="color:var(--t3)">${share[i].toFixed(0)}% of hours · ${tot[i].toFixed(1)}h</span></div>
+      <div style="position:relative;height:8px;background:#1A1F26;border-radius:1px">
+        <div style="width:${share[i].toFixed(1)}%;height:8px;background:${CH[k].col};border-radius:1px"></div>
+        <div style="position:absolute;left:25%;top:-2px;bottom:-2px;width:1px;background:#4A525C"></div>
+      </div></div>`).join('')+
+    `<p style="font-size:11.5px;line-height:1.7;color:var(--t3);margin-top:10px;padding-top:10px;border-top:1px solid var(--ln)">
+     The vertical mark sits at 25 percent, where each course would land if your hours matched your credits.</p>`;
+  el('effwtstats').innerHTML=stat('most','?'.replace('?',CH[ORDER[share.indexOf(Math.max(...share))]].code))+
+    stat('least',CH[ORDER[share.indexOf(Math.min(...share))]].code)+
+    stat('spread',(Math.max(...share)-Math.min(...share)).toFixed(0)+' pts')+
+    stat('even','25% each');
+  renderCover();
+}
+window.wipe=()=>{ if(confirm('Clear all stored sessions, tasks, attendance and topic marks?')){
+  localStorage.removeItem('fall26v5'); location.reload(); } };
+function renderCover(){
+  el('cover').innerHTML=ORDER.map(k=>{
+    const c=CH[k],rows=SCHED[k],cov=rows.filter((r,i)=>S.covered[k+'|'+i]).length;
+    const pct=Math.round(cov/rows.length*100);
+    return`<div style="display:flex;align-items:center;gap:11px;margin-bottom:9px">
+      <span class="m" style="font-size:11px;color:${c.col};width:54px">${c.code}</span>
+      <div style="flex:1;height:8px;background:#1A1F26;border-radius:1px"><div style="width:${pct}%;height:8px;background:${c.col};border-radius:1px"></div></div>
+      <span class="m" style="font-size:11px;color:var(--t3);width:56px;text-align:right">${cov}/${rows.length}</span></div>`;}).join('');
+}
+
+/* ================= splitters ================= */
+document.querySelectorAll('.gut').forEach(g=>{
+  g.addEventListener('mousedown',e=>{
+    e.preventDefault();g.classList.add('drag');
+    const left=g.previousElementSibling;
+    const startX=e.clientX,startW=left.getBoundingClientRect().width;
+    const move=ev=>{
+      const w=Math.max(200,Math.min(900,startW+(ev.clientX-startX)));
+      left.style.flex='0 0 '+w+'px';
+    };
+    const up=()=>{g.classList.remove('drag');document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up);};
+    document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);
+  });
+});
+
+/* ================= nav ================= */
+const views=['inbox','calendar','courses','semester','review'];
+function go(v){
+  views.forEach(x=>el('v-'+x).classList.toggle('on',x===v));
+  document.querySelectorAll('.mode').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+}
+document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>go(b.dataset.v));
+document.addEventListener('keydown',e=>{
+  if(document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='SELECT'){
+    if(e.key==='Escape')document.activeElement.blur();return;}
+  if(['1','2','3','4','5'].includes(e.key))go(views[+e.key-1]);
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();el('cli').focus();}
+});
+
+renderQueue();renderTasks();renderWeekStrip();renderStanding();renderTopics();
+renderCal();renderCsel();renderCourse();renderSem();renderReview();
+</script>
+</body>
+</html>
